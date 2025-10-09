@@ -47,9 +47,46 @@ npm run build
 npm test
 ```
 
-### 启动服务
-```bash
-npm start
+### 快速开始（quick start）
+
+#### 客户端配置（IDE）
+
+在Claude、Trae、cursor等MCP客户端的MCP配置文件中添加以下配置：
+
+```json
+{
+  "mcpServers": {
+    "jimenggen": {
+      "command": "npx",
+      "args": [
+        "jimenggen-mcp@1.0.0"
+      ],
+      "env": {
+        "JIMENG_ACCESS_KEY": "your_access_key_here",
+        "JIMENG_SECRET_KEY": "your_secret_key_here=="
+      }
+    }
+  }
+}
+```
+
+#### 本地运行配置
+
+```json
+{
+  "mcpServers": {
+    "jimenggen": {
+      "command": "node",
+      "args": [
+        "/path/to/jimenggen-mcp/build/index.js"
+      ],
+      "env": {
+        "JIMENG_ACCESS_KEY": "your_access_key_here",
+        "JIMENG_SECRET_KEY": "your_secret_key_here"
+      }
+    }
+  }
+}
 ```
 
 ## 📋 可用工具
