@@ -255,7 +255,7 @@ async function queryTaskResult(taskId: string, modelId: string): Promise<string 
       if (result.data.status === "done") {
         // 根据不同的模型类型返回不同的结果字段
         if (result.data.image_urls && result.data.image_urls.length > 0) {
-          return result.data.image_urls[0]; // 图片生成任务
+          return result.data.image_urls; // 图片生成任务
         } else if (result.data.video_url) {
           return result.data.video_url; // 视频生成任务
         } else {
@@ -641,7 +641,7 @@ async function generateImg(): Promise<boolean> {
     log(colors.cyan, `   Action: ${API_CONFIG_MAPPING['图片生成4.0'].action}`);
     log(colors.cyan, `   Version: ${API_CONFIG_MAPPING['图片生成4.0'].version}`);
     
-    const prompt = '生成一张图，一只可爱的猫咪在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去';
+    const prompt = '生成两张图:1.一只可爱的猫咪在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去,2.一只可爱的小狗在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去';
     const ratio = { width: 1024, height: 1024 };
     const imgUrls = JSON.stringify(["https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA==&auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"]);
     const scale = 0.7;
@@ -818,10 +818,10 @@ async function runAllTests() {
   }
   
   const tests = [
-    // { name: '文生图3.1', func: testTextToImage31 },
-    // { name: '图生图3.0', func: testImageToImage30 },
-    // { name: '视频生成3.0 Pro', func: testVideoGeneration30Pro },
-    // { name: '图片换装V2', func: testImageDressingV2 },
+    { name: '文生图3.1', func: testTextToImage31 },
+    { name: '图生图3.0', func: testImageToImage30 },
+    { name: '视频生成3.0 Pro', func: testVideoGeneration30Pro },
+    { name: '图片换装V2', func: testImageDressingV2 },
     { name: '图片生成4.0', func: generateImg }
   ];
   

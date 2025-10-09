@@ -413,7 +413,7 @@ async function queryTaskResult(taskId, modelId) {
             if (result.data.status === "done") {
                 // 根据不同的模型类型返回不同的结果字段
                 if (result.data.image_urls && result.data.image_urls.length > 0) {
-                    return result.data.image_urls[0]; // 图片生成任务
+                    return result.data.image_urls; // 图片生成任务
                 }
                 else if (result.data.video_url) {
                     return result.data.video_url; // 视频生成任务
