@@ -336,7 +336,8 @@ async function callJimengAPI(
   imageUrl?: string,
   videoConfig?: any,
   binaryDataBase64?: string,
-  reqImageStoreType?: string
+  reqImageStoreType?: string,
+  scale?: number
 ): Promise<string | null> {
   // 根据模型名称获取对应的模型ID
   const modelId = MODEL_MAPPING[modelName];
@@ -366,8 +367,11 @@ async function callJimengAPI(
     params.style = STYLE_MAPPING[style];
   }
 
-  if (imageUrl) {
+  if (imageUrl && modelId !== 'jimeng_t2i_v40') {
     params.image_urls = [imageUrl];
+  } else {
+    params.image_urls = JSON.parse(imageUrl || '[]');
+    params.scale = scale || 0.5;
   }
 
   if (binaryDataBase64) {
@@ -702,6 +706,82 @@ server.tool(
         {
           type: "text",
           text: `图生图生成成功！\n\n模型版本: 图生图3.0\n编辑提示词: ${prompt}\n${imageUrl ? `参考图片: ${imageUrl}\n` : "使用二进制数据\n"}生成图片比例: ${ratio} (${ratio.width}×${ratio.height})\n生成图片URL: ${resultUrl}`
+        }
+      ]
+    };
+  }
+);
+
+//注册图片生成4.0工具
+server.tool(
+    "generate-image",
+    "使用即梦AI图片生成模型生成图片",
+    {
+      prompt: z.string().describe("图片生成提示词,提示词需额外声明输出多少张图片(限制:最多输出6张图片)"),
+      ratio: z.object({
+        width: z.number().int().positive(),
+        height: z.number().int().positive()
+      }).describe("支持自定义生成图像宽高，宽高乘积范围在[1024*1024, 4096*4096]内,宽高比在[1:16,16:1]之间"),
+      imgUrls: z.string().optional().describe("图片文件URLs,支持输入0-6张图,传入格式:array of string"),
+      scale: z.number().positive().describe("文本描述影响的程度，该值越大代表文本描述影响程度越大，且输入图片影响程度越小（精度：支持小数点后两位），范围在[0.0, 1.0]内")
+    },
+    async ({ prompt, ratio ,imgUrls,scale}: { prompt?: string; ratio?: { width: number; height: number };imgUrls?: string; scale?: number; }) => {
+      // 检查必需参数是否存在
+      if (!prompt || !ratio) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "错误：缺少必需参数。请提供prompt和ratio参数。"
+            }
+          ]
+        };
+      }
+
+      if (scale && (scale < 0.0 || scale > 1.0)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "错误：scale参数值必须在[0.0, 1.0]范围内。"
+            }
+          ]
+        };
+      }
+
+      if (!scale) {
+        scale = 0.5;
+      }
+
+          // 检查API密钥是否配置
+    if (!JIMENG_ACCESS_KEY || !JIMENG_SECRET_KEY) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY，无法调用API。"
+          }
+        ]
+      };
+    }
+    const resultUrl = await callJimengAPI("图片生成4.0", prompt, ratio, undefined, imgUrls, undefined, undefined, undefined, scale);
+
+    if (!resultUrl) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "图片生成失败，请检查网络连接和API密钥配置。"
+          }
+        ]
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `图片生成成功！\n\n模型版本: 图片生成4.0\n编辑提示词: ${prompt}\n生成图片比例: ${ratio} (${ratio.width}×${ratio.height})\n${scale ? `参考比列: ${scale}\n` : ""}生成图片URL: ${resultUrl}`
         }
       ]
     };

@@ -8,8 +8,8 @@
   },
   "scripts": {
     "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
-    "test": "tsx test.ts",
-    "test:dev": "tsx test.ts",
+    "test": "tsx src/test.ts",
+    "test:dev": "tsx src/test.ts",
     "start": "node build/index.js"
   },
   "files": [

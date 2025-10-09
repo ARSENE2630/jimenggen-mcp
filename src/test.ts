@@ -18,7 +18,8 @@ const ENDPOINT = "https://visual.volcengineapi.com";
 const HOST = "visual.volcengineapi.com";
 const REGION = "cn-north-1";
 const SERVICE = "cv"; // 即梦AI使用cv服务名称，根据火山引擎官方文档
-
+const TEST_IMG_PATH = process.env.TEST_IMG_PATH || "";
+const MODEL_IMAGE_PATH  = process.env.MODEL_IMAGE_URL || "";
 // 环境变量配置
 const JIMENG_ACCESS_KEY = process.env.JIMENG_ACCESS_KEY;
 const JIMENG_SECRET_KEY = process.env.JIMENG_SECRET_KEY;
@@ -28,7 +29,8 @@ const MODEL_MAPPING: Record<string, string> = {
   "文生图3.1": "jimeng_t2i_v31",        // ✅ 正确的req_key，根据API测试确认
   "图生图3.0": "jimeng_i2i_v30",        // ✅ 正确的req_key，根据API测试确认
   "视频生成3.0 Pro": "jimeng_ti2v_v30_pro", // ✅ 视频生成3.0 Pro
-  "图片换装V2": "dressing_diffusionV2"   // ✅ 图片换装V2
+  "图片换装V2": "dressing_diffusionV2",   // ✅ 图片换装V2
+  "图片生成4.0": "jimeng_t2i_v40"        // ✅ 图片生成4.0
 };
 
 // 接口配置映射（动态Action和Version）
@@ -56,7 +58,13 @@ const API_CONFIG_MAPPING: Record<string, { action: string; version: string; resu
     version: "2022-08-31",
     resultAction: "CVGetResult", 
     resultVersion: "2022-08-31" 
-  }            // 图片换装V2
+  },            // 图片换装V2
+  "图片生成4.0": { 
+    action: "CVSync2AsyncSubmitTask", 
+    version: "2022-08-31",
+    resultAction: "CVSync2AsyncGetResult", 
+    resultVersion: "2022-08-31" 
+  }            // 图片生成4.0
 };
 
 // 风格映射
@@ -330,7 +338,7 @@ async function submitTask(
 
     log(colors.cyan, `🔍 提交任务请求URL: ${requestUrl}`);
     log(colors.cyan, `🔍 请求头: ${JSON.stringify(headers, null, 2)}`);
-    // log(colors.cyan, `🔍 请求体: ${formattedBody}`);
+    log(colors.cyan, `🔍 请求体: ${formattedBody}`);
 
     const response = await fetch(requestUrl, {
       method: 'POST',
@@ -376,7 +384,8 @@ async function callJimengAPI(
   imageUrl?: string,
   videoConfig?: any,
   binaryDataBase64?: string,
-  reqImageStoreType?: string
+  reqImageStoreType?: string,
+  scale?: number
 ): Promise<string | null> {
   // 根据模型名称获取对应的模型ID
   const modelId = MODEL_MAPPING[modelName];
@@ -406,8 +415,11 @@ async function callJimengAPI(
     params.style = STYLE_MAPPING[style];
   }
 
-  if (imageUrl) {
+  if (imageUrl && modelId !== 'jimeng_t2i_v40') {
     params.image_urls = [imageUrl];
+  } else {
+    params.image_urls = JSON.parse(imageUrl || '[]');
+    params.scale = scale || 0.5;
   }
 
   if (binaryDataBase64) {
@@ -615,6 +627,45 @@ async function testTextToImage31(): Promise<boolean> {
   }
 }
 
+
+/**
+ * 测试文生图4.0接口
+ */
+async function generateImg(): Promise<boolean> {
+  const testName = '生图4.0接口';
+  logTestStart(testName);
+  
+  try {
+    log(colors.cyan, '📝 测试参数:');
+    log(colors.cyan, `   模型: ${MODEL_MAPPING['图片生成4.0']}`);
+    log(colors.cyan, `   Action: ${API_CONFIG_MAPPING['图片生成4.0'].action}`);
+    log(colors.cyan, `   Version: ${API_CONFIG_MAPPING['图片生成4.0'].version}`);
+    
+    const prompt = '生成一张图，一只可爱的猫咪在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去';
+    const ratio = { width: 1024, height: 1024 };
+    const imgUrls = JSON.stringify(["https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA==&auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"]);
+    const scale = 0.7;
+    log(colors.cyan, `   提示词: ${prompt}`);
+    log(colors.cyan, `   尺寸: ${ratio.width}x${ratio.height}`);
+    log(colors.cyan, `   图片URL: ${imgUrls}`);
+    log(colors.cyan, `   参考比列: ${scale}`);
+    
+    log(colors.yellow, '📤 提交任务...');
+
+    const result = await callJimengAPI("图片生成4.0", prompt, ratio, undefined, imgUrls, undefined, undefined,undefined, scale);
+    if (result) {
+      logTestSuccess(testName, { imageUrl: result });
+      return true;
+    } else {
+      logTestFailure(testName, 'API返回空结果');
+      return false;
+    }
+  } catch (error) {
+    logTestFailure(testName, error);
+    return false;
+  }
+}
+
 /**
  * 测试图生图3.0接口
  */
@@ -631,7 +682,7 @@ async function testImageToImage30(): Promise<boolean> {
     const prompt = '将这张图片转换为卡通风格';
     // 图片Arrays与binary_data_base64二选一
     const imageUrl = JSON.stringify(new Array()); // 测试用URL，实际使用时需要替换
-    const binary_data_base64 = JSON.stringify([await readFileAsBase64("D:\\cursorProject\\moke\\xiaohongshuMcp\\workspace\\人物主图\\主角.jpg")]);
+    const binary_data_base64 = JSON.stringify([await readFileAsBase64(TEST_IMG_PATH)]);
     const ratio = { width: 1024, height: 1024 };
     
     log(colors.cyan, `   提示词: ${prompt}`);
@@ -715,7 +766,7 @@ async function testImageDressingV2(): Promise<boolean> {
     const modelImageUrl = ''; // 模特图片URL
     const garmentImageUrl = ''; // 服装图片URL
     const reqImageStoreType = 0 //默认为1,使用model与garment参数;为0时,使用binary_data_base64为参数(Array of string),以base64形式传入模特图与服装图
-    const binaryDataBase64 = JSON.stringify([await readFileAsBase64("D:\\cursorProject\\moke\\xiaohongshuMcp\\workspace\\人物主图\\主角.jpg"), await readFileAsBase64("D:\\cursorProject\\moke\\xiaohongshuMcp\\workspace\\旅行穿搭\\yunnan_outfit_1.jpg")]);
+    const binaryDataBase64 = JSON.stringify([await readFileAsBase64(TEST_IMG_PATH), await readFileAsBase64(MODEL_IMAGE_PATH)]);
 
     const prompt = '将服装自然地穿在模特身上';
     
@@ -770,7 +821,8 @@ async function runAllTests() {
     { name: '文生图3.1', func: testTextToImage31 },
     { name: '图生图3.0', func: testImageToImage30 },
     { name: '视频生成3.0 Pro', func: testVideoGeneration30Pro },
-    { name: '图片换装V2', func: testImageDressingV2 }
+    { name: '图片换装V2', func: testImageDressingV2 },
+    { name: '图片生成4.0', func: generateImg }
   ];
   
   let passed = 0;
@@ -813,6 +865,7 @@ if (process.argv[1] && process.argv[1].includes('test.ts')) {
 
 export {
   testTextToImage31,
+  generateImg,
   testImageToImage30,
   testVideoGeneration30Pro,
   testImageDressingV2,
