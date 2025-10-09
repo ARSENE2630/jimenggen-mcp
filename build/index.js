@@ -579,12 +579,12 @@ server.tool("image-to-image", "使用即梦AI图生图模型基于参考图片�
 });
 //注册图片生成4.0工具
 server.tool("generate-image", "使用即梦AI图片生成模型生成图片", {
-    prompt: z.string().describe("图片生成提示词,提示词需额外声明输出多少张图片(限制:最多输出6张图片)"),
+    prompt: z.string().describe("图片生成提示词,提示词需额外声明输出多少张图片(限制:最多输出6张图片),列如:'生成3张图片:1.小猫,2.小狗,3.老虎'"),
     ratio: z.object({
         width: z.number().int().positive(),
         height: z.number().int().positive()
     }).describe("支持自定义生成图像宽高，宽高乘积范围在[1024*1024, 4096*4096]内,宽高比在[1:16,16:1]之间"),
-    imgUrls: z.string().optional().describe("图片文件URLs,支持输入0-6张图,传入格式:array of string"),
+    imgUrls: z.string().optional().describe("参考图片文件URLs,支持输入0-6张图,传入格式:array of string"),
     scale: z.number().positive().describe("文本描述影响的程度，该值越大代表文本描述影响程度越大，且输入图片影响程度越小（精度：支持小数点后两位），范围在[0.0, 1.0]内")
 }, async ({ prompt, ratio, imgUrls, scale }) => {
     // 检查必需参数是否存在
@@ -621,6 +621,9 @@ server.tool("generate-image", "使用即梦AI图片生成模型生成图片", {
                 }
             ]
         };
+    }
+    if (!imgUrls) {
+        imgUrls = JSON.stringify([]);
     }
     const resultUrl = await callJimengAPI("图片生成4.0", prompt, ratio, undefined, imgUrls, undefined, undefined, undefined, scale);
     if (!resultUrl) {
