@@ -47,9 +47,46 @@ npm run build
 npm test
 ```
 
-### 启动服务
-```bash
-npm start
+### 快速开始（quick start）
+
+#### 客户端配置（IDE）
+
+在Claude、Trae、cursor等MCP客户端的MCP配置文件中添加以下配置：
+
+```json
+{
+  "mcpServers": {
+    "jimenggen": {
+      "command": "npx",
+      "args": [
+        "jimenggen-mcp@1.0.0"
+      ],
+      "env": {
+        "JIMENG_ACCESS_KEY": "your_access_key_here",
+        "JIMENG_SECRET_KEY": "your_secret_key_here=="
+      }
+    }
+  }
+}
+```
+
+#### 本地运行配置
+
+```json
+{
+  "mcpServers": {
+    "jimenggen": {
+      "command": "node",
+      "args": [
+        "/path/to/jimenggen-mcp/build/index.js"
+      ],
+      "env": {
+        "JIMENG_ACCESS_KEY": "your_access_key_here",
+        "JIMENG_SECRET_KEY": "your_secret_key_here"
+      }
+    }
+  }
+}
 ```
 
 ## 📋 可用工具
@@ -188,6 +225,19 @@ await imageToImage({
 如有问题或建议，请通过以下方式联系：
 - 提交 GitHub Issue
 - 发送邮件至项目维护者
+
+## 版本历史
+
+- **v1.0.0**: 初始版本，支持基础的文生图、图生图、视频生成和图片换装功能
+
+## 赞赏
+
+如果本项目对您有帮助，欢迎赞赏支持！
+
+### 赞赏方式
+- 微信打赏：扫描下方二维码
+
+![赞赏二维码](img_v3_02qt_7610c893-7931-4659-800d-496818fafbag.jpg)
 
 ---
 
