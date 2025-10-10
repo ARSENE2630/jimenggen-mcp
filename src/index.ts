@@ -570,8 +570,8 @@ async function queryTaskResultWithPolling(taskId: string, modelId: string): Prom
 
 // 创建MCP服务器实例
 const server = new McpServer({
-  name: "jimengpic",
-  version: "1.0.0",
+  name: "jimenggen",
+  version: "1.0.4",
 });
 
 // 注册文生图工具（支持3.0和3.1版本）

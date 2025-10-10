@@ -456,8 +456,8 @@ async function queryTaskResultWithPolling(taskId, modelId) {
 }
 // 创建MCP服务器实例
 const server = new McpServer({
-    name: "jimengpic",
-    version: "1.0.0",
+    name: "jimenggen",
+    version: "1.0.4",
 });
 // 注册文生图工具（支持3.0和3.1版本）
 server.tool("text-to-image", "使用即梦AI文生图模型生成图片，支持3.0和3.1版本", {
