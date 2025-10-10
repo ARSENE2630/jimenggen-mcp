@@ -667,10 +667,10 @@ async function runAllTests() {
         return;
     }
     const tests = [
-        // { name: '文生图3.1', func: testTextToImage31 },
-        // { name: '图生图3.0', func: testImageToImage30 },
-        // { name: '视频生成3.0 Pro', func: testVideoGeneration30Pro },
-        // { name: '图片换装V2', func: testImageDressingV2 },
+        { name: '文生图3.1', func: testTextToImage31 },
+        { name: '图生图3.0', func: testImageToImage30 },
+        { name: '视频生成3.0 Pro', func: testVideoGeneration30Pro },
+        { name: '图片换装V2', func: testImageDressingV2 },
         { name: '图片生成4.0', func: generateImg }
     ];
     let passed = 0;
