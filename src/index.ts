@@ -717,7 +717,7 @@ server.tool(
     "generate-image",
     "使用即梦AI图片生成模型生成图片",
     {
-      prompt: z.string().describe("图片生成提示词,提示词需额外声明输出多少张图片(限制:最多输出6张图片),列如:'生成3张图片:1.小猫,2.小狗,3.老虎'"),
+      prompt: z.string().describe("图片生成提示词,支持批量文生图、图生图、图片编辑等,提示词需额外声明输出多少张图片(限制:最多输出6张图片),列如:'生成3张图片:1.小猫,2.小狗,3.老虎'"),
       ratio: z.object({
         width: z.number().int().positive(),
         height: z.number().int().positive()
