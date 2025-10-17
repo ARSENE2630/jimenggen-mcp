@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7.2-blue.svg)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-1.4.0-green.svg)](https://modelcontextprotocol.io/)
 
-即梦AI全能力生成MCP服务是一个基于Model Context Protocol (MCP)的AI图像和视频生成工具，集成了火山引擎即梦AI的强大生成能力。
+即梦AI全能力生成MCP服务是一个基于Model Context Protocol (MCP)的AI图像和视频生成工具，集成了火山引擎即梦AI(seedream model)的强大生成能力。
 
 ## ✨ 核心功能
 
