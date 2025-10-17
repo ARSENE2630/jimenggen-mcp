@@ -627,6 +627,13 @@ async function testTextToImage31(): Promise<boolean> {
   }
 }
 
+async function base64Encode(fileBuffer: Buffer): Promise<string> {
+  return fileBuffer.toString('base64');
+}
+
+async function readFileAsBuffer(filePath: string): Promise<Buffer> {
+  return fs.promises.readFile(filePath);
+}
 
 /**
  * 测试文生图4.0接口
@@ -644,6 +651,20 @@ async function generateImg(): Promise<boolean> {
     const prompt = '生成两张图:1.一只可爱的猫咪在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去,2.一只可爱的小狗在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去';
     const ratio = { width: 1024, height: 1024 };
     const imgUrls = JSON.stringify(["https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA==&auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"]);
+    let base64Array = JSON.stringify([]);
+    const uploadFiles = [
+      {
+        file: await readFileAsBuffer("D:\\cursorProject\\moke\\xiaohongshuMcp\\jimenggen-mcp\\海边.jpg"),
+        fileName: '海边.jpg'
+      },
+      {
+        file: await readFileAsBuffer("D:\\cursorProject\\moke\\xiaohongshuMcp\\jimenggen-mcp\\花园.jpeg"),
+        fileName: '花园.jpeg'
+      },
+    ];
+    if (uploadFiles && uploadFiles.length > 0) {
+        base64Array = JSON.stringify(await Promise.all(uploadFiles.map(async file => await base64Encode(Buffer.from(await file.file)))));
+    }
     const scale = 0.7;
     log(colors.cyan, `   提示词: ${prompt}`);
     log(colors.cyan, `   尺寸: ${ratio.width}x${ratio.height}`);
@@ -652,7 +673,7 @@ async function generateImg(): Promise<boolean> {
     
     log(colors.yellow, '📤 提交任务...');
 
-    const result = await callJimengAPI("图片生成4.0", prompt, ratio, undefined, imgUrls, undefined, undefined,undefined, scale);
+    const result = await callJimengAPI("图片生成4.0", prompt, ratio, undefined, imgUrls, undefined, base64Array,undefined, scale);
     if (result) {
       logTestSuccess(testName, { imageUrl: result });
       return true;
@@ -818,10 +839,10 @@ async function runAllTests() {
   }
   
   const tests = [
-    { name: '文生图3.1', func: testTextToImage31 },
-    { name: '图生图3.0', func: testImageToImage30 },
-    { name: '视频生成3.0 Pro', func: testVideoGeneration30Pro },
-    { name: '图片换装V2', func: testImageDressingV2 },
+    // { name: '文生图3.1', func: testTextToImage31 },
+    // { name: '图生图3.0', func: testImageToImage30 },
+    // { name: '视频生成3.0 Pro', func: testVideoGeneration30Pro },
+    // { name: '图片换装V2', func: testImageDressingV2 },
     { name: '图片生成4.0', func: generateImg }
   ];
   

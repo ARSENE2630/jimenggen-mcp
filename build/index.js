@@ -209,6 +209,10 @@ async function readFileAsBase64(filePath) {
         throw error;
     }
 }
+// 将文件缓冲区转换为base64编码
+async function base64Encode(fileBuffer) {
+    return fileBuffer.toString('base64');
+}
 // 图片换装专用函数（完整实现）
 async function callDressingAPI(modelImageUrl, garmentImageUrl, prompt, options) {
     try {
@@ -585,8 +589,13 @@ server.tool("generate-image", "使用即梦AI图片生成模型生成图片", {
         height: z.number().int().positive()
     }).describe("支持自定义生成图像宽高，宽高乘积范围在[1024*1024, 4096*4096]内,宽高比在[1:16,16:1]之间"),
     imgUrls: z.string().optional().describe("参考图片文件URLs,支持输入0-6张图,传入格式:array of string"),
+    uploadFiles: z.array(z.object({
+        file: z.instanceof(File).describe("本地图片文件对象，需是浏览器环境中的File类型"),
+        filename: z.string().describe("文件名（含扩展名，如image1.png）"),
+        mimeType: z.string().refine(mime => ["image/jpeg", "image/png", "image/webp"].includes(mime), { message: "仅支持jpg、png、webp格式的图片" }).describe("文件MIME类型，如image/jpeg、image/png")
+    })).max(6).optional().describe("本地上传的参考图片，最多6张，支持jpg、png、webp格式；与imgUrls二选一，若同时存在则优先使用本参数"),
     scale: z.number().positive().describe("文本描述影响的程度，该值越大代表文本描述影响程度越大，且输入图片影响程度越小（精度：支持小数点后两位），范围在[0.0, 1.0]内")
-}, async ({ prompt, ratio, imgUrls, scale }) => {
+}, async ({ prompt, ratio, imgUrls, scale, uploadFiles }) => {
     // 检查必需参数是否存在
     if (!prompt || !ratio) {
         return {
@@ -625,7 +634,11 @@ server.tool("generate-image", "使用即梦AI图片生成模型生成图片", {
     if (!imgUrls) {
         imgUrls = JSON.stringify([]);
     }
-    const resultUrl = await callJimengAPI("图片生成4.0", prompt, ratio, undefined, imgUrls, undefined, undefined, undefined, scale);
+    let base64Array = JSON.stringify([]);
+    if (uploadFiles && uploadFiles.length > 0) {
+        base64Array = JSON.stringify(await Promise.all(uploadFiles.map(async (file) => await base64Encode(Buffer.from(await file.file.arrayBuffer())))));
+    }
+    const resultUrl = await callJimengAPI("图片生成4.0", prompt, ratio, undefined, imgUrls, undefined, base64Array, undefined, scale);
     if (!resultUrl) {
         return {
             content: [
