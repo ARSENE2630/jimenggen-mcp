@@ -14,11 +14,14 @@ dotenv.config();
 const ENDPOINT = "https://visual.volcengineapi.com";
 const HOST = "visual.volcengineapi.com";
 const REGION = "cn-north-1";
-const SERVICE = "cv"; // 即梦AI使用cv服务名称，根据火山引擎官方文档
+const SERVICE = "cv"; // 即梦AI使用cv服务名称,根据火山引擎官方文档
 
 // 环境变量配置
 const JIMENG_ACCESS_KEY = process.env.JIMENG_ACCESS_KEY;
 const JIMENG_SECRET_KEY = process.env.JIMENG_SECRET_KEY;
+const SEEDREAM_API_KEY = process.env.SEEDREAM_API_KEY;
+const SEEDREAM_MODEL_NAME = "doubao-seedream-4-0-250828";
+const SEEDREAM_ENDPOINT = "https://ark.cn-beijing.volces.com/api/v3/images/generations";
 
 // 调试环境变量信息
 console.log("🔍 MCP服务器启动 - 环境变量检查:");
@@ -43,15 +46,15 @@ if (!JIMENG_ACCESS_KEY || !JIMENG_SECRET_KEY) {
   console.error("   2. 或创建.env文件：");
   console.error("      JIMENG_ACCESS_KEY=your_access_key");
   console.error("      JIMENG_SECRET_KEY=your_secret_key");
-  console.error("🔗 服务将启动但无法调用API功能，仅供测试使用");
+  console.error("🔗 服务将启动但无法调用API功能,仅供测试使用");
 } else {
-  console.log("✅ 环境变量配置正确，API功能可用");
+  console.log("✅ 环境变量配置正确,API功能可用");
 }
 
 // 即梦AI模型映射（仅保留核心功能）
 const MODEL_MAPPING: Record<string, string> = {
-  "文生图3.1": "jimeng_t2i_v31",        // ✅ 正确的req_key，根据API测试确认
-  "图生图3.0": "jimeng_i2i_v30",        // ✅ 正确的req_key，根据API测试确认
+  "文生图3.1": "jimeng_t2i_v31",        // ✅ 正确的req_key,根据API测试确认
+  "图生图3.0": "jimeng_i2i_v30",        // ✅ 正确的req_key,根据API测试确认
   "视频生成3.0 Pro": "jimeng_ti2v_v30_pro", // ✅ 视频生成3.0 Pro
   "图片换装V2": "dressing_diffusionV2",   // ✅ 图片换装V2
   "图片生成4.0": "jimeng_t2i_v40"        // ✅ 图片生成4.0
@@ -201,13 +204,13 @@ async function imagePathToBase64(imagePath: string): Promise<string> {
   try {
     // 检查是否为本地文件路径（包含盘符或相对路径）
     if (imagePath.includes(':/') || imagePath.includes('\\') || imagePath.startsWith('./') || imagePath.startsWith('../')) {
-      // 本地文件路径，使用fs读取
+      // 本地文件路径,使用fs读取
       const fs = await import('fs');
       const buffer = fs.readFileSync(imagePath);
       const base64 = buffer.toString('base64');
       return base64;
     } else {
-      // HTTP URL，使用fetch获取
+      // HTTP URL,使用fetch获取
       const response = await fetch(imagePath);
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.status}`);
@@ -228,7 +231,7 @@ async function readFileAsBase64(filePath: string): Promise<string> {
   try {
     // 使用sharp读取图片文件
     const imageBuffer = await sharp(filePath)
-      .jpeg({ quality: 90 }) // 转换为JPEG格式，质量90%
+      .jpeg({ quality: 90 }) // 转换为JPEG格式,质量90%
       .toBuffer();
     
     // 转换为base64字符串
@@ -300,7 +303,7 @@ async function callDressingAPI(
       if (options?.binaryDataBase64) {
         params.binary_data_base64 = JSON.parse(options.binaryDataBase64); // 直接传入base64字符串
       } else {
-        throw new Error('使用base64方式上传图片时，需要提供binaryDataBase64参数');
+        throw new Error('使用base64方式上传图片时,需要提供binaryDataBase64参数');
       }
       params.garment = { data: [{type: options?.garmentType || 'full' }] };
     } else {
@@ -334,7 +337,7 @@ async function callDressingAPI(
   }
 }
 
-// 调用即梦AI API（支持动态Action和Version，采用任务提交+轮询查询方式）
+// 调用即梦AI API（支持动态Action和Version,采用任务提交+轮询查询方式）
 async function callJimengAPI(
   modelName: string, 
   prompt: string, 
@@ -401,6 +404,71 @@ async function callJimengAPI(
 
   // 第二步：轮询查询任务结果
   return await queryTaskResultWithPolling(taskId, modelId);
+}
+
+// 直接调用火山引擎大模型API的函数
+async function callSeeddream4API(
+  prompt: string,
+  imgUrls?: string,
+  size?: string
+): Promise<string | null> {
+  try {
+    // Seedream 4.0模型的模型ID
+    const modelId = SEEDREAM_MODEL_NAME;
+    
+    // 构建请求体
+    const reqBody: any = {
+      model: modelId,
+      prompt: prompt,
+      size: size || '1024x1024',
+      sequential_image_generation: "auto",
+      response_format: "url",
+      watermark: false,
+      optimize_prompt_options:{mode:"standard"}
+    };
+
+    // 添加可选参数
+    if (imgUrls) {
+      reqBody.img_urls = imgUrls;
+    }
+
+    // 构建请求URL
+    const url = SEEDREAM_ENDPOINT;
+    
+    // 构建请求头
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${SEEDREAM_API_KEY}`
+    };
+    
+    // 发送请求
+    const response = await fetch(url, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(reqBody)
+    });
+    
+    if (!response.ok) {
+      console.error(`API请求失败: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`错误详情: ${errorText}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // 检查响应数据
+    if (!data || !data.data || !Array.isArray(data.data) || data.data.length === 0) {
+      console.error("API响应格式不正确或没有生成图片");
+      return null;
+    }
+    
+    // 返回第一张图片的URL
+    return data.data[0].url || null;
+  } catch (error) {
+    console.error("调用Seedream 4.0 API失败:", error);
+    return null;
+  }
 }
 
 // 提交任务
@@ -540,7 +608,7 @@ async function queryTaskResult(taskId: string, modelId: string): Promise<string 
       } else if (result.data.status === "failed") {
         throw new Error(`任务执行失败: ${result.data.error_message || '未知错误'}`);
       } else if (result.data.status === "running") {
-        // 任务还在运行中，返回null让轮询机制处理
+        // 任务还在运行中,返回null让轮询机制处理
         return null;
       }
     }
@@ -563,7 +631,7 @@ async function queryTaskResultWithPolling(taskId: string, modelId: string): Prom
     const result = await queryTaskResult(taskId, modelId);
     
     if (result) {
-      return result; // 任务完成，返回结果
+      return result; // 任务完成,返回结果
     }
     
     if (attempt < maxAttempts) {
@@ -584,13 +652,13 @@ const server = new McpServer({
 // 注册文生图工具（支持3.0和3.1版本）
 server.tool(
   "text-to-image",
-  "使用即梦AI文生图模型生成图片，支持3.0和3.1版本",
+  "使用即梦AI文生图模型生成图片,支持3.0和3.1版本",
   {
     prompt: z.string().describe("图片生成提示词"),
     ratio: z.object({
       width: z.number().int().positive(),
       height: z.number().int().positive()
-    }).describe("支持自定义生成图像宽高，范围在[512, 2048]内，宽高比在1:3到3:1之间"),
+    }).describe("支持自定义生成图像宽高,范围在[512, 2048]内,宽高比在1:3到3:1之间"),
     style: z.enum(["写实", "国潮", "赛博朋克", "简约", "卡通", "油画", "水彩", "素描"]).optional().describe("图片风格")
   },
   async ({ prompt, ratio, style }: { prompt?: string; ratio?: { width: number; height: number }; style?: string; }) => {
@@ -612,7 +680,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY，无法调用API。"
+            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY,无法调用API。"
           }
         ]
       };
@@ -625,7 +693,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "生成图片失败，请检查网络连接和API密钥配置。"
+            text: "生成图片失败,请检查网络连接和API密钥配置。"
           }
         ]
       };
@@ -652,7 +720,7 @@ server.tool(
     ratio: z.object({
       width: z.number().int().positive(),
       height: z.number().int().positive()
-    }).describe("支持自定义生成图像宽高，范围在[512, 2016]内"),
+    }).describe("支持自定义生成图像宽高,范围在[512, 2016]内"),
     localPath: z.string().optional().describe("参考图片的本地路径（与imageUrl二选一,当用户输入本地文件路径时,必填）")
   },
   async ({ prompt, imageUrl, ratio, localPath }: { prompt?: string; imageUrl?: string; ratio?: { width: number; height: number }; localPath?: string}) => {
@@ -686,7 +754,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY，无法调用API。"
+            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY,无法调用API。"
           }
         ]
       };
@@ -702,7 +770,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "图生图生成失败，请检查网络连接和API密钥配置。"
+            text: "图生图生成失败,请检查网络连接和API密钥配置。"
           }
         ]
       };
@@ -728,19 +796,19 @@ server.tool(
       ratio: z.object({
         width: z.number().int().positive(),
         height: z.number().int().positive()
-      }).describe("支持自定义生成图像宽高，宽高乘积范围在[1024*1024, 4096*4096]内,宽高比在[1:16,16:1]之间"),
+      }).describe("支持自定义生成图像宽高,宽高乘积范围在[1024*1024, 4096*4096]内,宽高比在[1:16,16:1]之间"),
       imgUrls: z.string().optional().describe("参考图片文件URLs,支持输入0-6张图,传入格式:array of string"),
       uploadFiles: z.array(
             z.object({
-                file: z.instanceof(File).describe("本地图片文件对象，需是浏览器环境中的File类型"),
-                filename: z.string().describe("文件名（含扩展名，如image1.png）"),
+                file: z.instanceof(File).describe("本地图片文件对象,需是浏览器环境中的File类型"),
+                filename: z.string().describe("文件名（含扩展名,如image1.png）"),
                 mimeType: z.string().refine(mime => 
                     ["image/jpeg", "image/png", "image/webp"].includes(mime),
                     { message: "仅支持jpg、png、webp格式的图片" }
-                ).describe("文件MIME类型，如image/jpeg、image/png")
+                ).describe("文件MIME类型,如image/jpeg、image/png")
             })
-        ).max(6).optional().describe("本地上传的参考图片，最多6张，支持jpg、png、webp格式；与imgUrls二选一，若同时存在则优先使用本参数"),
-      scale: z.number().positive().describe("文本描述影响的程度，该值越大代表文本描述影响程度越大，且输入图片影响程度越小（精度：支持小数点后两位），范围在[0.0, 1.0]内")
+        ).max(6).optional().describe("本地上传的参考图片,最多6张,支持jpg、png、webp格式；与imgUrls二选一,若同时存在则优先使用本参数"),
+      scale: z.number().positive().describe("文本描述影响的程度,该值越大代表文本描述影响程度越大,且输入图片影响程度越小（精度：支持小数点后两位）,范围在[0.0, 1.0]内")
     },
     async ({ prompt, ratio ,imgUrls,scale,uploadFiles}: { prompt?: string; ratio?: { width: number; height: number };imgUrls?: string; scale?: number; uploadFiles?: { file: File; filename: string; mimeType: string }[] }) => {
       // 检查必需参数是否存在
@@ -776,7 +844,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY，无法调用API。"
+            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY,无法调用API。"
           }
         ]
       };
@@ -798,7 +866,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "图片生成失败，请检查网络连接和API密钥配置。"
+            text: "图片生成失败,请检查网络连接和API密钥配置。"
           }
         ]
       };
@@ -818,7 +886,7 @@ server.tool(
 // 注册视频生成工具
 server.tool(
   "generate-video",
-  "使用即梦AI视频生成模型生成短视频，需要先创建数字形象",
+  "使用即梦AI视频生成模型生成短视频,需要先创建数字形象",
   {
     prompt: z.string().describe("视频生成提示词:【提示词结构】"+
 "1、基础结构：主体 / 背景 / 镜头 + 动作"+
@@ -836,9 +904,9 @@ server.tool(
 "固定：“固定镜头”、“镜头静止不动”"+
 "聚焦：“镜头特写”"+
 "手持：“镜头晃动 / 抖动”、“手持拍摄”、“动态不稳定”"+
-"2、程度副词：可以通过程度副词，突出主体动作频率与强度，或者特征，如“快速” 、“大幅度”、“高频率”、“剧烈”、“缓缓”"),
-    frames: z.number().describe("生成的总帧数（帧数 = 24 * n + 1，其中n为秒数，支持5s、10s）可选取值：[121, 241]默认值：121"),
-    aspect_ratio: z.string().describe("生成视频的长宽比，只在文生视频场景下生效，图生视频场景会根据输入图的长宽比从可选取值中选择最接近的比例生成；可选取值：['16:9', '4:3', '1:1', '3:4', '9:16', '21:9']默认值：'16:9'生成视频长宽与比例的对应关系如下：2176 * 928（21:9）;1920 * 1088（16:9）;1664 * 1248（4:3）;1440 * 1440 （1:1）;1248 * 1664（3:4）;1088 * 1920（9:16）")},
+"2、程度副词：可以通过程度副词,突出主体动作频率与强度,或者特征,如“快速” 、“大幅度”、“高频率”、“剧烈”、“缓缓”"),
+    frames: z.number().describe("生成的总帧数（帧数 = 24 * n + 1,其中n为秒数,支持5s、10s）可选取值：[121, 241]默认值：121"),
+    aspect_ratio: z.string().describe("生成视频的长宽比,只在文生视频场景下生效,图生视频场景会根据输入图的长宽比从可选取值中选择最接近的比例生成；可选取值：['16:9', '4:3', '1:1', '3:4', '9:16', '21:9']默认值：'16:9'生成视频长宽与比例的对应关系如下：2176 * 928（21:9）;1920 * 1088（16:9）;1664 * 1248（4:3）;1440 * 1440 （1:1）;1248 * 1664（3:4）;1088 * 1920（9:16）")},
   async ({ prompt, frames, aspect_ratio }: { prompt?: string; frames?: number; aspect_ratio?: string }) => {  
     // 检查必需参数是否存在
     if (!prompt || !frames || !aspect_ratio) {
@@ -858,7 +926,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY，无法调用API。"
+            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY,无法调用API。"
           }
         ]
       };
@@ -874,7 +942,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "视频生成失败，请检查网络连接和API密钥配置。"
+            text: "视频生成失败,请检查网络连接和API密钥配置。"
           }
         ]
       };
@@ -920,7 +988,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY，无法调用API。"
+            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY,无法调用API。"
           }
         ]
       };
@@ -935,7 +1003,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "数字人生成失败，请检查网络连接和API密钥配置。"
+            text: "数字人生成失败,请检查网络连接和API密钥配置。"
           }
         ]
       };
@@ -980,7 +1048,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY，无法调用API。"
+            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY,无法调用API。"
           }
         ]
       };
@@ -995,7 +1063,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "动作模仿生成失败，请检查网络连接和API密钥配置。"
+            text: "动作模仿生成失败,请检查网络连接和API密钥配置。"
           }
         ]
       };
@@ -1017,15 +1085,15 @@ server.tool(
   "image-dressing",
   "使用即梦AI图片换装模型为模特更换服装",
   {
-    modelImageUrl: z.string().optional().describe("模特图片URL（需要清晰的人物主体，与localPathArray二选一）"),
-    garmentImageUrl: z.string().optional().describe("服装图片URL（需要清晰的服装主体，与localPathArray二选一）"),
-    prompt: z.string().optional().describe("换装提示词，如'将服装自然地穿在模特身上'"),
+    modelImageUrl: z.string().optional().describe("模特图片URL（需要清晰的人物主体,与localPathArray二选一）"),
+    garmentImageUrl: z.string().optional().describe("服装图片URL（需要清晰的服装主体,与localPathArray二选一）"),
+    prompt: z.string().optional().describe("换装提示词,如'将服装自然地穿在模特身上'"),
     garmentType: z.enum(["upper", "bottom", "full"]).optional().describe("服装类型：上衣、下装或全身"),
     keepHead: z.boolean().optional().describe("是否保留头部"),
     keepHand: z.boolean().optional().describe("是否保留手部"),
     keepFoot: z.boolean().optional().describe("是否保留脚部"),
     doSuperResolution: z.boolean().optional().describe("是否进行超分辨率处理"),
-    localPathArray: z.string().optional().describe("图片本地路径数组,array类型的json字符串，数组包含第一个为模特图，第二个为服装图（与URL参数二选一,当用户输入本地文件路径时,必填）"),
+    localPathArray: z.string().optional().describe("图片本地路径数组,array类型的json字符串,数组包含第一个为模特图,第二个为服装图（与URL参数二选一,当用户输入本地文件路径时,必填）"),
     reqImageStoreType: z.number().optional().describe("图片存储类型（0:使用localPathArray(本地文件路径), 1:使用图片URL）")
   },
   async ({ modelImageUrl, garmentImageUrl, prompt, garmentType, keepHead, keepHand, keepFoot, doSuperResolution, localPathArray, reqImageStoreType }: { 
@@ -1046,7 +1114,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "错误：缺少必需参数。请提供modelImageUrl和garmentImageUrl参数，或提供localPathArray参数（数组长度为2）。"
+            text: "错误：缺少必需参数。请提供modelImageUrl和garmentImageUrl参数,或提供localPathArray参数（数组长度为2）。"
           }
         ]  
       };
@@ -1058,7 +1126,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY，无法调用API。"
+            text: "错误：未设置环境变量 JIMENG_ACCESS_KEY 和 JIMENG_SECRET_KEY,无法调用API。"
           }
         ]
       };
@@ -1087,7 +1155,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: "图片换装失败，请检查网络连接、API密钥配置以及图片URL的有效性。"
+            text: "图片换装失败,请检查网络连接、API密钥配置以及图片URL的有效性。"
           }
         ]
       };
@@ -1098,6 +1166,65 @@ server.tool(
         {
           type: "text",
           text: `图片换装成功！\n\n模型版本: 图片换装V2\n${modelImageUrl ? `模特图片: ${modelImageUrl}\n服装图片: ${garmentImageUrl}\n` : "使用本地路径数组\n"}换装提示词: ${prompt || '默认提示词'}\n生成图片URL: ${resultUrl}`
+        }
+      ]
+    };
+  }
+);
+
+// 注册直接调用火山引擎大模型API的图片生成工具
+server.tool(
+  "generate-img-seedream4",
+  "直接调用火山引擎大模型API生成图片,使用doubao-seedream-4.0模型",
+  {
+    prompt: z.string().describe("图片生成提示词,描述想要生成的图片内容"),
+    imgUrls: z.string().optional().describe("参考图片文件URLs,支持输入0-6张图,传入格式:array of string"),
+    size: z.string().optional().describe("图片尺寸,格式为'宽x高',如'1024x1024',默认为'1024x1024',总像素取值范围：[1280x720, 4096x4096] ")
+  },
+  async ({ prompt, imgUrls, size }: { prompt?: string; imgUrls?: string; size?: string }) => {
+    // 检查必需参数是否存在
+    if (!prompt) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "错误：缺少必需参数。请提供prompt参数。"
+          }
+        ]
+      };
+    }
+
+    // 检查API密钥是否配置
+    if (!SEEDREAM_API_KEY) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "错误：未设置环境变量 SEEDREAM_API_KEY,无法调用API。"
+          }
+        ]
+      };
+    }
+
+    // 调用Seedream 4.0 API
+    const imageUrl = await callSeeddream4API(prompt, imgUrls, size);
+
+    if (!imageUrl) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "图片生成失败,请检查网络连接和API密钥配置。"
+          }
+        ]
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Seedream 4.0图片生成成功！\n\n提示词: ${prompt}\n图片尺寸: ${size || '1024x1024'}\n图片URL: ${imageUrl}`
         }
       ]
     };

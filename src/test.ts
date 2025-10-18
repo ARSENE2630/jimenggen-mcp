@@ -23,6 +23,11 @@ const MODEL_IMAGE_PATH  = process.env.MODEL_IMAGE_URL || "";
 // 环境变量配置
 const JIMENG_ACCESS_KEY = process.env.JIMENG_ACCESS_KEY;
 const JIMENG_SECRET_KEY = process.env.JIMENG_SECRET_KEY;
+const SEEDREAM_API_KEY = process.env.SEEDREAM_API_KEY;
+const SEEDREAM_MODEL_NAME = "doubao-seedream-4-0-250828";
+const SEEDREAM_ENDPOINT = "https://ark.cn-beijing.volces.com/api/v3/images/generations";
+
+
 
 // 即梦AI模型映射（仅保留核心功能）
 const MODEL_MAPPING: Record<string, string> = {
@@ -651,6 +656,7 @@ async function generateImg(): Promise<boolean> {
     const prompt = '生成两张图:1.一只可爱的猫咪在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去,2.一只可爱的小狗在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去';
     const ratio = { width: 1024, height: 1024 };
     const imgUrls = JSON.stringify(["https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA==&auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"]);
+
     let base64Array = JSON.stringify([]);
     const uploadFiles = [
       {
@@ -665,7 +671,8 @@ async function generateImg(): Promise<boolean> {
     if (uploadFiles && uploadFiles.length > 0) {
         base64Array = JSON.stringify(await Promise.all(uploadFiles.map(async file => await base64Encode(Buffer.from(await file.file)))));
     }
-    const scale = 0.7;
+
+    const scale = 1.0;
     log(colors.cyan, `   提示词: ${prompt}`);
     log(colors.cyan, `   尺寸: ${ratio.width}x${ratio.height}`);
     log(colors.cyan, `   图片URL: ${imgUrls}`);
@@ -826,6 +833,85 @@ async function testImageDressingV2(): Promise<boolean> {
 }
 
 /**
+ * 测试SeedDream4接口
+ */
+async function testSeedDream4(): Promise<boolean> {
+  const testName = 'SeedDream4接口';
+  logTestStart(testName);
+  
+  try {
+    log(colors.cyan, '📝 测试参数:');
+    log(colors.cyan, `   模型: ${SEEDREAM_MODEL_NAME}`);
+    log(colors.cyan, `   端点: ${SEEDREAM_ENDPOINT}`);
+    
+    const prompt = '一只可爱的小猫在花园里玩耍，阳光明媚，色彩鲜艳';
+    const size = '1024x1024';
+
+    
+    log(colors.cyan, `   提示词: ${prompt}`);
+    log(colors.cyan, `   尺寸: ${size}`);
+    
+    log(colors.yellow, '📤 调用SeedDream4 API...');
+    
+    // 构建请求体
+    const requestBody = {
+      model: SEEDREAM_MODEL_NAME,
+      prompt: prompt,
+      size: size || '1024x1024',
+      sequential_image_generation: "auto",
+      response_format: "url",
+      watermark: false,
+      optimize_prompt_options:{mode:"standard"}
+    };
+    
+    // 构建请求URL
+    const url = SEEDREAM_ENDPOINT;
+    
+    // 构建请求头
+    const headers = {
+      'Authorization': `Bearer ${SEEDREAM_API_KEY}`,
+      'Content-Type': 'application/json'
+    };
+    
+    log(colors.cyan, `🔍 请求URL: ${url}`);
+    log(colors.cyan, `🔍 请求头: ${JSON.stringify(headers, null, 2)}`);
+    log(colors.cyan, `🔍 请求体: ${JSON.stringify(requestBody, null, 2)}`);
+    
+    // 发送请求
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(requestBody)
+    });
+    
+    log(colors.cyan, `📊 响应状态: ${response.status} ${response.statusText}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      log(colors.red, `📄 错误响应: ${errorText}`);
+      throw new Error(`HTTP error! status: ${response.status}, response: ${errorText}`);
+    }
+    
+    const responseText = await response.text();
+    log(colors.cyan, `📄 响应体: ${responseText}`);
+    
+    const result = JSON.parse(responseText);
+    
+    if (result && result.data && result.data.length > 0) {
+      const imageUrl = result.data[0].url;
+      logTestSuccess(testName, { imageUrl: imageUrl });
+      return true;
+    } else {
+      logTestFailure(testName, 'API返回结果格式不正确或没有图片URL');
+      return false;
+    }
+  } catch (error) {
+    logTestFailure(testName, error);
+    return false;
+  }
+}
+
+/**
  * 主测试函数
  */
 async function runAllTests() {
@@ -843,7 +929,8 @@ async function runAllTests() {
     // { name: '图生图3.0', func: testImageToImage30 },
     // { name: '视频生成3.0 Pro', func: testVideoGeneration30Pro },
     // { name: '图片换装V2', func: testImageDressingV2 },
-    { name: '图片生成4.0', func: generateImg }
+    // { name: '图片生成4.0', func: generateImg },
+    { name: 'SeedDream4', func: testSeedDream4 }
   ];
   
   let passed = 0;
@@ -877,7 +964,7 @@ async function runAllTests() {
 }
 
 // 运行测试
-if (process.argv[1] && process.argv[1].includes('test.ts')) {
+if (process.argv[1] && (process.argv[1].includes('test.ts') || process.argv[1].includes('test.js'))) {
   runAllTests().catch(error => {
     log(colors.red, '💥 测试执行出错:', error);
     process.exit(1);
@@ -890,5 +977,6 @@ export {
   testImageToImage30,
   testVideoGeneration30Pro,
   testImageDressingV2,
+  testSeedDream4,
   runAllTests
 };
