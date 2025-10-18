@@ -390,7 +390,8 @@ async function callJimengAPI(
   videoConfig?: any,
   binaryDataBase64?: string,
   reqImageStoreType?: string,
-  scale?: number
+  scale?: number,
+  imageUrl2?: string[]
 ): Promise<string | null> {
   // 根据模型名称获取对应的模型ID
   const modelId = MODEL_MAPPING[modelName];
@@ -423,7 +424,8 @@ async function callJimengAPI(
   if (imageUrl && modelId !== 'jimeng_t2i_v40') {
     params.image_urls = [imageUrl];
   } else {
-    params.image_urls = JSON.parse(imageUrl || '[]');
+    // params.image_urls = JSON.parse(imageUrl || '[]');
+    params.image_urls = imageUrl2;
     params.scale = scale || 0.5;
   }
 
@@ -653,26 +655,31 @@ async function generateImg(): Promise<boolean> {
     log(colors.cyan, `   Action: ${API_CONFIG_MAPPING['图片生成4.0'].action}`);
     log(colors.cyan, `   Version: ${API_CONFIG_MAPPING['图片生成4.0'].version}`);
     
-    const prompt = '生成两张图:1.一只可爱的猫咪在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去,2.一只可爱的小狗在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去';
+    // const prompt = '生成两张图:1.一只可爱的猫咪在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去,2.一只可爱的小狗在花园里玩耍，阳光明媚，色彩鲜艳，把参考图内容也融合进去';
+    // const imgUrls = JSON.stringify(["https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA==&auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"]);
+
+    //const prompt = '修复办公场景图，去掉地板上的所有污渍，保持图中原始场景布局和尺寸不变，使其更加真实自然，增强光照效果，保持原有的办公桌椅、电脑和装饰物品不变'
+    const prompt = '在图片中加个男人'
+    const imgUrls = JSON.stringify(["https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA==&auto=format&fit=crop&w=1200&q=80"]);
+    const imgUrls2 = ["https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA==&auto=format&fit=crop&w=1200&q=80"]
     const ratio = { width: 1024, height: 1024 };
-    const imgUrls = JSON.stringify(["https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA==&auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"]);
 
     let base64Array = JSON.stringify([]);
-    const uploadFiles = [
-      {
-        file: await readFileAsBuffer("D:\\cursorProject\\moke\\xiaohongshuMcp\\jimenggen-mcp\\海边.jpg"),
-        fileName: '海边.jpg'
-      },
-      {
-        file: await readFileAsBuffer("D:\\cursorProject\\moke\\xiaohongshuMcp\\jimenggen-mcp\\花园.jpeg"),
-        fileName: '花园.jpeg'
-      },
-    ];
-    if (uploadFiles && uploadFiles.length > 0) {
-        base64Array = JSON.stringify(await Promise.all(uploadFiles.map(async file => await base64Encode(Buffer.from(await file.file)))));
-    }
+    // const uploadFiles = [
+    //   {
+    //     file: await readFileAsBuffer("D:\\cursorProject\\moke\\xiaohongshuMcp\\jimenggen-mcp\\海边.jpg"),
+    //     fileName: '海边.jpg'
+    //   },
+    //   {
+    //     file: await readFileAsBuffer("D:\\cursorProject\\moke\\xiaohongshuMcp\\jimenggen-mcp\\花园.jpeg"),
+    //     fileName: '花园.jpeg'
+    //   },
+    // ];
+    // if (uploadFiles && uploadFiles.length > 0) {
+    //     base64Array = JSON.stringify(await Promise.all(uploadFiles.map(async file => await base64Encode(Buffer.from(await file.file)))));
+    // }
 
-    const scale = 1.0;
+    const scale = 0.8;
     log(colors.cyan, `   提示词: ${prompt}`);
     log(colors.cyan, `   尺寸: ${ratio.width}x${ratio.height}`);
     log(colors.cyan, `   图片URL: ${imgUrls}`);
@@ -680,7 +687,7 @@ async function generateImg(): Promise<boolean> {
     
     log(colors.yellow, '📤 提交任务...');
 
-    const result = await callJimengAPI("图片生成4.0", prompt, ratio, undefined, imgUrls, undefined, base64Array,undefined, scale);
+    const result = await callJimengAPI("图片生成4.0", prompt, ratio, undefined, imgUrls, undefined, base64Array,undefined, scale,imgUrls2);
     if (result) {
       logTestSuccess(testName, { imageUrl: result });
       return true;
@@ -931,8 +938,8 @@ async function runAllTests() {
     // { name: '图生图3.0', func: testImageToImage30 },
     // { name: '视频生成3.0 Pro', func: testVideoGeneration30Pro },
     // { name: '图片换装V2', func: testImageDressingV2 },
-    // { name: '图片生成4.0', func: generateImg },
-    { name: 'SeedDream4', func: testSeedDream4 }
+    { name: '图片生成4.0', func: generateImg },
+    // { name: 'SeedDream4', func: testSeedDream4 }
   ];
   
   let passed = 0;
