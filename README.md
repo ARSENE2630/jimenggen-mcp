@@ -59,7 +59,7 @@ npm test
     "jimenggen": {
       "command": "npx",
       "args": [
-        "jimenggen-mcp@1.1.1"
+        "jimenggen-mcp@1.1.2"
       ],
       "env": {
         "JIMENG_ACCESS_KEY": "your_access_key_here",
