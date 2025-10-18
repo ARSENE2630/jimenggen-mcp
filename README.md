@@ -59,11 +59,12 @@ npm test
     "jimenggen": {
       "command": "npx",
       "args": [
-        "jimenggen-mcp@1.1.0"
+        "jimenggen-mcp@1.1.1"
       ],
       "env": {
         "JIMENG_ACCESS_KEY": "your_access_key_here",
-        "JIMENG_SECRET_KEY": "your_secret_key_here=="
+        "JIMENG_SECRET_KEY": "your_secret_key_here==",
+        "SEEDREAM_API_KEY": "your_seedream_api_key_here"// 火山引擎SEEDREAM模型 API密钥
       }
     }
   }
