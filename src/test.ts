@@ -845,6 +845,7 @@ async function testSeedDream4(): Promise<boolean> {
     log(colors.cyan, `   端点: ${SEEDREAM_ENDPOINT}`);
     
     const prompt = '一只可爱的小猫在花园里玩耍，阳光明媚，色彩鲜艳';
+    const imgUrls = ['']
     const size = '1024x1024';
 
     
@@ -857,6 +858,7 @@ async function testSeedDream4(): Promise<boolean> {
     const requestBody = {
       model: SEEDREAM_MODEL_NAME,
       prompt: prompt,
+      image: imgUrls,
       size: size || '1024x1024',
       sequential_image_generation: "auto",
       response_format: "url",

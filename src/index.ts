@@ -429,7 +429,7 @@ async function callSeeddream4API(
 
     // 添加可选参数
     if (imgUrls) {
-      reqBody.img_urls = imgUrls;
+      reqBody.image = imgUrls;
     }
 
     // 构建请求URL
